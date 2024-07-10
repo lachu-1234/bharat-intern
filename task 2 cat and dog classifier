@@ -1,0 +1,89 @@
+import zipfile
+import os
+
+zip_path = '/content/test.zip'
+extract_dir = '/content/test_extracted'
+
+with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+    zip_ref.extractall(extract_dir)
+import shutil
+import random
+
+# Define paths
+base_dir = '/content/test_extracted'
+train_dir = os.path.join(base_dir, 'train')
+validation_dir = os.path.join(base_dir, 'validation')
+
+# Create directories
+os.makedirs(train_dir, exist_ok=True)
+os.makedirs(validation_dir, exist_ok=True)
+
+train_cats_dir = os.path.join(train_dir, 'cats')
+train_dogs_dir = os.path.join(train_dir, 'dogs')
+validation_cats_dir = os.path.join(validation_dir, 'cats')
+validation_dogs_dir = os.path.join(validation_dir, 'dogs')
+
+os.makedirs(train_cats_dir, exist_ok=True)
+os.makedirs(train_dogs_dir, exist_ok=True)
+os.makedirs(validation_cats_dir, exist_ok=True)
+os.makedirs(validation_dogs_dir, exist_ok=True)
+
+# Load and shuffle dataset
+dataset_dir = '/content/test_extracted'  # Adjust the path as needed
+filenames = os.listdir(dataset_dir)
+random.shuffle(filenames)
+
+# Split dataset (80% training, 20% validation)
+train_split = int(0.8 * len(filenames))
+
+train_filenames = filenames[:train_split]
+validation_filenames = filenames[train_split:]
+
+# Function to copy files with error handling
+def copy_files(file_list, src_dir, dest_dir):
+    for filename in file_list:
+        src = os.path.join(src_dir, filename)
+        dest = os.path.join(dest_dir, filename)
+        try:
+            shutil.copy(src, dest)
+        except Exception as e:
+            print(f"Error copying {filename}: {e}")
+
+# Copy images to respective directories
+copy_files([f for f in train_filenames if 'cat' in f], dataset_dir, train_cats_dir)
+copy_files([f for f in train_filenames if 'dog' in f], dataset_dir, train_dogs_dir)
+copy_files([f for f in validation_filenames if 'cat' in f], dataset_dir, validation_cats_dir)
+copy_files([f for f in validation_filenames if 'dog' in f], dataset_dir, validation_dogs_dir)
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+
+train_dir = '/content/test_extracted'
+validation_dir = '/content/test_extracted'
+
+# ImageDataGenerator for data augmentation and normalization
+train_datagen = ImageDataGenerator(
+    rescale=1./255,
+    rotation_range=40,
+    width_shift_range=0.2,
+    height_shift_range=0.2,
+    shear_range=0.2,
+    zoom_range=0.2,
+    horizontal_flip=True,
+    fill_mode='nearest'
+)
+
+test_datagen = ImageDataGenerator(rescale=1./255)
+
+# Data generators for training and validation
+train_generator = train_datagen.flow_from_directory(
+    train_dir,
+    target_size=(150, 150),
+    batch_size=32,
+    class_mode='binary'
+)
+
+validation_generator = test_datagen.flow_from_directory(
+    validation_dir,
+    target_size=(150, 150),
+    batch_size=32,
+    class_mode='binary'
+)
